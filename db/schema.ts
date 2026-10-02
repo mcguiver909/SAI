@@ -8,5 +8,5 @@ export const rooms=sqliteTable('rooms',{id:text('id').primaryKey(),owner:text('o
 export const members=sqliteTable('members',{room:text('room').notNull().references(()=>rooms.id,{onDelete:'cascade'}),profile:text('profile').notNull().references(()=>profiles.id,{onDelete:'cascade'})},t=>[primaryKey({columns:[t.room,t.profile]})]);
 export const friendships=sqliteTable('friendships',{sender:text('sender').notNull().references(()=>profiles.id,{onDelete:'cascade'}),recipient:text('recipient').notNull().references(()=>profiles.id,{onDelete:'cascade'}),status:text('status').notNull().default('pending')},t=>[primaryKey({columns:[t.sender,t.recipient]})]);
 
-export const accounts=sqliteTable('accounts',{owner:text('owner').primaryKey(),username:text('username').notNull().unique(),passwordHash:text('password_hash').notNull(),created:text('created').notNull()});
+export const accounts=sqliteTable('accounts',{owner:text('owner').primaryKey(),username:text('username').notNull().unique(),signupInstagram:text('signup_instagram').notNull().default(''),signupLinkedin:text('signup_linkedin').notNull().default(''),passwordHash:text('password_hash').notNull(),created:text('created').notNull()});
 export const authAttempts=sqliteTable('auth_attempts',{key:text('key').primaryKey(),attempts:integer('attempts').notNull(),expires:integer('expires').notNull()});
