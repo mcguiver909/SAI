@@ -1,22 +1,36 @@
-export type Interest={id:string;label:string;category:string;shared:boolean};
-export type Profile={id:string;name:string;bio:string;color:string;interests:Interest[]};
+export type Preference='like'|'avoid'|'explore';
+export type Interest={id:string;label:string;category:string;shared:boolean;preference?:Preference};
+export type Profile={id:string;name:string;bio:string;color:string;interests:Interest[];instagramHandle?:string;instagramVisible?:boolean};
 export type Match={id:string;label:string;category:string;kind:'exact'|'related'|'ai';members:string[];evidence:{profile:string;label:string}[];reason:string};
 export const categories=['전체','음악','게임','여행','운동','콘텐츠','음식','공부·일','기타'];
+export const preferenceNames={like:'좋아해요',avoid:'피하고 싶어요',explore:'해보고 싶어요'};
+export const preferenceQuestions={like:'무엇을 좋아해요?',avoid:'무엇을 싫어하거나 피하고 싶어요?',explore:'새롭게 해보고 싶은 것은요?'};
+export function preferenceOf(t:Interest):Preference{return t.preference||'like';}
+export function positiveInterests(p:Profile){return p.interests.filter(t=>t.shared&&preferenceOf(t)!=='avoid');}
+export function eligibleMatches(matches:Match[],profiles:Profile[]){
+ const avoided=new Set(profiles.flatMap(p=>p.interests.filter(t=>t.shared&&preferenceOf(t)==='avoid').map(t=>t.category+':'+canonical(t.label))));
+ return matches.filter(m=>!avoided.has(m.category+':'+canonical(m.label))&&!m.evidence.some(e=>avoided.has(m.category+':'+canonical(e.label))));
+}
 const aliases:Record<string,string>={'데이식스':'day6','데식':'day6','day6':'day6','하데스':'hades','hades':'hades','인공지능':'ai','ai/ml':'ai','머신러닝':'machinelearning','기계학습':'machinelearning','넷플릭스':'netflix'};
 export function canonical(s:string){const k=s.toLowerCase().replace(/[\s·_\-]/g,'');return aliases[k]||k;}
 const concepts=[{label:'일본 여행',category:'여행',words:['일본','교토','오사카','도쿄','후쿠오카']},{label:'데이터·AI',category:'공부·일',words:['인공지능','머신러닝','기계학습','데이터','machinelearning']},{label:'야외 활동',category:'운동',words:['러닝','등산','하이킹','트레킹']}];
 export function findMatches(profiles:Profile[]):Match[]{
  const map=new Map<string,Match>();
- for(const p of profiles)for(const t of p.interests.filter(t=>t.shared)){
+ for(const p of profiles)for(const t of positiveInterests(p)){
   const key=canonical(t.label);if(!key)continue;
-  let m=map.get(key);if(!m){m={id:'exact-'+key,label:key==='day6'?'DAY6':t.label,category:t.category,kind:'exact',members:[],evidence:[],reason:'같은 관심사를 선택했어요.'};map.set(key,m);}
+  let m=map.get(key);if(!m){m={id:'exact-'+key,label:key==='day6'?'DAY6':t.label,category:t.category,kind:'exact',members:[],evidence:[],reason:'좋아하거나 해보고 싶은 관심사가 겹쳐요.'};map.set(key,m);}
   if(!m.members.includes(p.id)){m.members.push(p.id);m.evidence.push({profile:p.id,label:t.label});}
  }
  const result=[...map.values()].filter(x=>x.members.length>=2);
- for(const c of concepts){const evidence=profiles.flatMap(p=>{const t=p.interests.find(t=>t.shared&&c.words.some(w=>canonical(t.label).includes(canonical(w))));return t?[{profile:p.id,label:t.label}]:[];});
+ for(const c of concepts){const evidence=profiles.flatMap(p=>{const t=positiveInterests(p).find(t=>c.words.some(w=>canonical(t.label).includes(canonical(w))));return t?[{profile:p.id,label:t.label}]:[];});
   if(evidence.length<2||new Set(evidence.map(x=>canonical(x.label))).size<2)continue;
   result.push({id:'related-'+c.label,label:c.label,category:c.category,kind:'related',members:evidence.map(x=>x.profile),evidence,reason:'서로 다른 항목을 같은 관심 분야로 묶었어요.'});}
- return result.sort((a,b)=>b.members.length-a.members.length||(a.kind==='exact'?0:1)-(b.kind==='exact'?0:1)||a.label.localeCompare(b.label));
+ return eligibleMatches(result,profiles).sort((a,b)=>b.members.length-a.members.length||(a.kind==='exact'?0:1)-(b.kind==='exact'?0:1)||a.label.localeCompare(b.label));
+}
+export function normalizeInstagram(value:string){
+ let s=value.trim();if(!s)return '';
+ if(/^https?:\/\//i.test(s)){try{const u=new URL(s);if(!['instagram.com','www.instagram.com'].includes(u.hostname)||u.username||u.password||u.port)throw new Error();const parts=u.pathname.split('/').filter(Boolean);if(parts.length!==1)throw new Error();s=parts[0];}catch{throw new Error('Instagram 아이디 또는 프로필 링크를 확인해주세요.');}}
+ s=s.replace(/^@/,'').toLowerCase();if(!/^[a-z0-9_][a-z0-9_.]{0,29}$/.test(s)||s.endsWith('.')||s.includes('..')||['accounts','explore','direct','p','reel','reels','stories'].includes(s))throw new Error('Instagram 아이디는 영문·숫자·밑줄·마침표로 1~30자 입력해주세요.');return s;
 }
 export function contactOrSensitive(s:string){return /(?:[\w.+-]+@[\w.-]+\.[a-z]{2,}|(?:\+82[-\s]?)?0?1[016789][-\s]?\d{3,4}[-\s]?\d{4}|\d{6}[- ]?[1-4]\d{6}|https?:\/\/|비밀번호|비번|주민등록)/i.test(s);}
 export const demo:Profile[]=[

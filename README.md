@@ -18,7 +18,7 @@ Node.js 24 이상에서 `npm install` 후 `npm run server`를 실행하세요. `
 
 ## AI 설정
 
-기본 의미 비교는 Microsoft multilingual-e5-small의 ONNX 배포본을 Transformers.js로 로컬 서버에서 실행합니다. 첫 분석에서 모델 파일을 내려받습니다. 동일 관심사 정규화와 분야 규칙도 함께 사용합니다. 모델 점수는 실제 대화 가능성의 확률이 아닙니다.
+의미 비교는 Qwen3-Embedding-0.6B의 ONNX q8 배포본을 Transformers.js로 실행합니다. 웹에서는 공유 관심사를 Web Worker에서 계산하며 첫 분석에서 약 614MB의 모델 파일을 내려받습니다. PC 사용을 권장합니다. 로컬 Node 서버도 같은 Qwen3 모델을 사용합니다. 동일 관심사 정규화와 분야 규칙도 함께 사용합니다. 모델 점수는 실제 대화 가능성의 확률이 아닙니다.
 
 무료 공개 가중치 LLM을 컴퓨터에서 실행하려면 Ollama로 모델을 준비한 뒤 `.env`에 `OLLAMA_URL=http://localhost:11434`, `OLLAMA_MODEL=qwen3:1.7b`를 설정하세요. 이 방식은 서버의 컴퓨팅 자원을 사용합니다. OpenAI를 사용하려면 서버에만 `OPENAI_API_KEY`를 설정합니다. ChatGPT 무료 계정은 API 권한을 제공하지 않습니다.
 
@@ -28,6 +28,6 @@ Node.js 24 이상에서 `npm install` 후 `npm run server`를 실행하세요. `
 
 `node backend/smoke.mjs`는 실행 중인 로컬 서버에 연결해 5명 모임, 별칭 정규화, 비공개 항목 제외, 친구 수락, 입력 필터, 삭제를 확인합니다. TypeScript 검사와 웹 내보내기를 완료했습니다. 실제 iOS/Android 기기 실행·스토어 제출은 아직 하지 않았습니다. 계정 복구, Spotify/YouTube 계정 연동·주간 자동 갱신은 미구현입니다.
 
-웹 체험의 Worker 환경에는 로컬 E5/OCR 모델이 없습니다. 이 환경의 기본 비교는 태그·분야 기준이며 LLM·캡처 인식에는 서버 API 설정이 필요합니다. 비공개 체험 링크는 일반 방문자를 위한 인스타 공개 링크가 아닙니다.
+웹의 서버 Worker는 모델을 실행하지 않으며 브라우저에서 Qwen3를 실행합니다. 기본 태그·분야 비교는 모델 없이도 동작합니다. LLM·캡처 인식에는 서버 API 설정이 필요합니다. Instagram은 계정 핸들을 직접 등록하는 기능이며 OAuth 로그인이나 게시물 수집이 아닙니다. 공개 여부를 켠 경우에만 수락한 친구가 볼 수 있습니다.
 
 [알고리즘 설계](ALGORITHM.md) · [연구와 라이선스](THIRD_PARTY.md)
