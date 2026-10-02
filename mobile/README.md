@@ -2,7 +2,7 @@
 
 iOS와 Android용 Expo / React Native 앱입니다. 친구와 1:1 취향 비교, 공유 프로필, 인원 제한 없는 모임을 지원합니다.
 
-실제 프로필·친구·모임은 SQLite 또는 배포된 D1에 저장합니다. Gemini는 서버에서 취향 문장을 정리하고, 웹의 Qwen3-Embedding은 공개 관심사의 유사도를 계산합니다. YouTube OAuth와 이미지 OCR은 현재 웹에서 사용합니다. 이미지 OCR은 기기에서 처리하며 결과를 확인한 뒤 가져옵니다.
+실제 프로필·친구·모임은 SQLite 또는 배포된 D1에 저장합니다. Gemini는 서버에서 취향 문장을 정리하고, 웹의 Qwen3-Embedding은 공개 관심사의 유사도를 계산합니다. YouTube OAuth와 LinkedIn 프로필 링크 가져오기는 현재 웹에서 사용합니다. 이미지·OCR·PDF 업로드는 제공하지 않습니다.
 
 ## 휴대폰 실행
 
