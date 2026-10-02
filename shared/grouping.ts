@@ -1,6 +1,7 @@
 import {canonical,positiveInterests,eligibleMatches,type Profile,type Match} from './matching.ts';
-export function rankInterests(matches:Match[],people:Profile[]){return eligibleMatches(matches,people).slice().sort((a,b)=>b.members.length-a.members.length||(a.kind==='exact'?0:1)-(b.kind==='exact'?0:1)||(b.similarity||0)-(a.similarity||0)||a.label.localeCompare(b.label));}
-export function suggestGroups(people:Profile[],matches:Match[],size=4){
+export function interestScore(m:Match,people:Profile[]){const ids=new Set(people.map(p=>p.id));const coverage=m.members.filter(id=>ids.has(id)).length/Math.max(1,people.length);return Math.round(100*coverage*(m.kind==='exact'?1:Math.min(1,Math.max(0,m.similarity??.6))));}
+export function rankInterests(matches:Match[],people:Profile[]){return eligibleMatches(matches,people).slice().sort((a,b)=>interestScore(b,people)-interestScore(a,people)||b.members.length-a.members.length||a.label.localeCompare(b.label));}
+export function suggestGroups(people:Profile[],matches:Match[],size=4,mode:PlanMode='cohesion'){
  const safe=eligibleMatches(matches,people);const limit=Math.max(2,Math.min(6,size));
  const tags=new Map(people.map(p=>[p.id,positiveInterests(p)]));
  const key=(a:string,b:string)=>JSON.stringify([a,b].sort());const edgesByPair=new Map<string,Match[]>();const pairCache=new Map<string,number>();
@@ -19,10 +20,21 @@ export function suggestGroups(people:Profile[],matches:Match[],size=4){
   for(let i=0;i<clusters.length;i++)for(let j=i+1;j<clusters.length;j++){
    if(clusters[i].length+clusters[j].length>limit)continue;
    const scores=clusters[i].flatMap(a=>clusters[j].map(b=>pair(a,b)));const min=Math.min(...scores);
-   if(min>best){best=min;chosen=[i,j];}
+   if(min<=0)continue;const mean=scores.reduce((a,b)=>a+b,0)/scores.length;const combined=clusters[i].length+clusters[j].length;
+   const score=mode==='cohesion'?min:mode==='balance'?.55*min+.45*combined/limit:.5*mean+.5*min+.05*(clusters[i].length===1||clusters[j].length===1?1:0);
+   if(score>best){best=score;chosen=[i,j];}
   }
   if(!chosen)break;const [i,j]=chosen;clusters[i]=[...clusters[i],...clusters[j]].sort();clusters.splice(j,1);
  }
- const groups=clusters.filter(c=>c.length>1).map(ids=>{const scores=ids.flatMap((a,i)=>ids.slice(i+1).map(b=>pair(a,b)));const evidence=rankInterests(safe.filter(m=>m.members.filter(id=>ids.includes(id)).length>=2),people);return {ids,score:scores.reduce((a,b)=>a+b,0)/scores.length,interests:evidence.slice(0,3)};}).sort((a,b)=>b.score-a.score||b.ids.length-a.ids.length);
+ const groups=clusters.filter(c=>c.length>1).map(ids=>{const scores=ids.flatMap((a,i)=>ids.slice(i+1).map(b=>pair(a,b)));const evidence=rankInterests(safe.filter(m=>m.members.filter(id=>ids.includes(id)).length>=2),people.filter(p=>ids.includes(p.id)));return {ids,score:scores.reduce((a,b)=>a+b,0)/scores.length,interests:evidence.slice(0,3)};}).sort((a,b)=>b.score-a.score||b.ids.length-a.ids.length);
  return {groups,unassigned:clusters.filter(c=>c.length===1).flat(),pair};
+}
+
+export type PlanMode='cohesion'|'balance'|'coverage';
+export function groupPlans(people:Profile[],matches:Match[],size:number){
+ const seen=new Set<string>();return (['cohesion','balance','coverage'] as PlanMode[]).flatMap(mode=>{
+  const result=suggestGroups(people,matches,size,mode);const signature=JSON.stringify(result.groups.map(g=>g.ids.slice().sort().join(',')).sort());if(seen.has(signature)||!result.groups.length)return [];seen.add(signature);
+  const totalPairs=result.groups.reduce((sum,g)=>sum+g.ids.length*(g.ids.length-1)/2,0);const score=totalPairs?Math.round(result.groups.reduce((sum,g)=>sum+g.score*g.ids.length*(g.ids.length-1)/2,0)/totalPairs*100):0;
+  return [{mode,groups:result.groups,unassigned:result.unassigned,score,minScore:Math.round(Math.min(...result.groups.map(g=>g.score))*100),range:Math.round((Math.max(...result.groups.map(g=>g.score))-Math.min(...result.groups.map(g=>g.score)))*100)}];
+ });
 }

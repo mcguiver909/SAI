@@ -43,6 +43,13 @@
       "when": 1790957826373,
       "tag": "0005_icy_network",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1790959362501,
+      "tag": "0006_aberrant_red_ghost",
+      "breakpoints": true
     }
   ]
 }

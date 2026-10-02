@@ -10,3 +10,5 @@ export const friendships=sqliteTable('friendships',{sender:text('sender').notNul
 
 export const accounts=sqliteTable('accounts',{owner:text('owner').primaryKey(),username:text('username').notNull().unique(),signupInstagram:text('signup_instagram').notNull().default(''),signupLinkedin:text('signup_linkedin').notNull().default(''),passwordHash:text('password_hash').notNull(),created:text('created').notNull()});
 export const authAttempts=sqliteTable('auth_attempts',{key:text('key').primaryKey(),attempts:integer('attempts').notNull(),expires:integer('expires').notNull()});
+
+export const roomPlans=sqliteTable('room_plans',{room:text('room').primaryKey().references(()=>rooms.id,{onDelete:'cascade'}),payload:text('payload').notNull(),created:text('created').notNull()});

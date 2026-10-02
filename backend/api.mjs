@@ -28,7 +28,7 @@ export async function api(req,env){try{
   const fs=await db.prepare("SELECT p.* FROM friendships f JOIN profiles p ON p.id=CASE WHEN f.sender=? THEN f.recipient ELSE f.sender END WHERE (f.sender=? OR f.recipient=?) AND f.status='accepted'").bind(p.id,p.id,p.id).all();
   const requests=await db.prepare("SELECT p.* FROM friendships f JOIN profiles p ON p.id=f.sender WHERE f.recipient=? AND f.status='pending'").bind(p.id).all();
   const sent=await db.prepare("SELECT recipient FROM friendships WHERE sender=? AND status='pending'").bind(p.id).all();
-  let selectedRoom=null;if(q.has('room')){const r=await db.prepare('SELECT r.* FROM rooms r JOIN members m ON m.room=r.id WHERE r.id=? AND m.profile=?').bind(q.get('room'),p.id).first();if(r){const ms=await db.prepare('SELECT p.* FROM profiles p JOIN members m ON m.profile=p.id WHERE m.room=? ORDER BY p.created').bind(r.id).all();selectedRoom={...r,members:ms.results.map(x=>profile(x))};}}
+  let selectedRoom=null;if(q.has('room')){const r=await db.prepare('SELECT r.* FROM rooms r JOIN members m ON m.room=r.id WHERE r.id=? AND m.profile=?').bind(q.get('room'),p.id).first();if(r){const ms=await db.prepare('SELECT p.* FROM profiles p JOIN members m ON m.profile=p.id WHERE m.room=? ORDER BY p.created').bind(r.id).all();const saved=await db.prepare('SELECT payload,created FROM room_plans WHERE room=?').bind(r.id).first();selectedRoom={...r,members:ms.results.map(x=>profile(x)),plan:saved?{...JSON.parse(saved.payload),created:saved.created}:null};}}
   return json({account,me:profile(p,true),rooms:rs.results,friends:fs.results.map(x=>profile(x,false,true)),requests:requests.results.map(x=>profile(x)),sent:sent.results.map(x=>x.recipient),selectedRoom});
  }
  const body=await req.text();if(body.length>9*1024*1024)return fail('이미지가 너무 커요.',413);const b=JSON.parse(body);
@@ -65,6 +65,16 @@ export async function api(req,env){try{
   const id=p?.id||crypto.randomUUID();await db.batch([db.prepare('INSERT INTO profiles (id,owner,name,bio,interests,color,created,instagram_handle,instagram_visible,linkedin_handle,linkedin_visible,avatar) VALUES (?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(owner) DO UPDATE SET name=excluded.name,bio=excluded.bio,interests=excluded.interests,instagram_handle=excluded.instagram_handle,instagram_visible=excluded.instagram_visible,linkedin_handle=excluded.linkedin_handle,linkedin_visible=excluded.linkedin_visible,avatar=excluded.avatar').bind(id,owner,name,bio,JSON.stringify(unique),p?.color||'#3154F5',new Date().toISOString(),instagramHandle,instagramVisible,linkedinHandle,linkedinVisible,avatar),db.prepare("UPDATE accounts SET signup_instagram='',signup_linkedin='' WHERE owner=?").bind(owner)]);return json({id});
  }
  if(!p)return fail('먼저 내 취향을 등록해주세요.');
+ if(b.action==='saveRoomPlan'){
+  const r=await db.prepare('SELECT owner FROM rooms WHERE id=?').bind(String(b.room)).first();if(!r||r.owner!==p.id)return fail('모임을 만든 사람만 편성을 확정할 수 있어요.',403);
+  const plan=b.plan;if(!plan||![3,4,5].includes(plan.size)||!Array.isArray(plan.selected)||plan.selected.length<3||plan.selected.length>100||new Set(plan.selected).size!==plan.selected.length||!Array.isArray(plan.groups)||!Array.isArray(plan.unassigned))return fail('편성 조건을 확인해주세요.');
+  const members=(await db.prepare('SELECT profile FROM members WHERE room=?').bind(String(b.room)).all()).results.map(x=>x.profile);
+  if(!members.includes(p.id))return fail('모임에 참여한 뒤 편성을 확인해주세요.',403);
+  if(!plan.groups.length)return fail('확정할 테이블이 없어요.');
+  if(plan.selected.some(id=>typeof id!=='string'||!members.includes(id))||plan.groups.some(g=>!Array.isArray(g)||g.length<2||g.length>plan.size))return fail('참여자가 바뀌었어요. 편성을 다시 확인해주세요.');
+  const placed=[...plan.groups.flat(),...plan.unassigned];if(placed.length!==plan.selected.length||new Set(placed).size!==placed.length||placed.some(id=>!plan.selected.includes(id)))return fail('선택한 사람이 한 번씩 포함되어야 해요.');
+  await db.prepare('INSERT INTO room_plans(room,payload,created) VALUES(?,?,?) ON CONFLICT(room) DO UPDATE SET payload=excluded.payload,created=excluded.created').bind(String(b.room),JSON.stringify({size:plan.size,selected:plan.selected,groups:plan.groups,unassigned:plan.unassigned}),new Date().toISOString()).run();return json({ok:true});
+ }
  if(b.action==='createRoom'){const name=String(b.name||'').trim();if(!name||name.length>60||contactOrSensitive(name))return fail('모임 이름은 개인정보 없이 1~60자로 입력해주세요.');const id=crypto.randomUUID();await db.batch([db.prepare('INSERT INTO rooms (id,owner,name,created) VALUES (?,?,?,?)').bind(id,p.id,name,new Date().toISOString()),db.prepare('INSERT INTO members (room,profile) VALUES (?,?)').bind(id,p.id)]);return json({id});}
  if(b.action==='joinRoom'){const room=await db.prepare('SELECT id FROM rooms WHERE id=?').bind(String(b.id)).first();if(!room)return fail('초대 링크나 모임 코드를 확인해주세요.',404);await db.prepare('INSERT OR IGNORE INTO members (room,profile) VALUES (?,?)').bind(b.id,p.id).run();return json({id:b.id});}
  if(b.action==='leaveRoom'){await db.prepare('DELETE FROM members WHERE room=? AND profile=?').bind(String(b.id),p.id).run();return json({ok:true});}
