@@ -1,7 +1,7 @@
 export type Preference='like'|'avoid'|'explore';
 export type Interest={id:string;label:string;category:string;shared:boolean;preference?:Preference};
-export type Profile={id:string;name:string;bio:string;color:string;interests:Interest[];instagramHandle?:string;instagramVisible?:boolean};
-export type Match={id:string;label:string;category:string;kind:'exact'|'related'|'ai';members:string[];evidence:{profile:string;label:string}[];reason:string};
+export type Profile={id:string;name:string;bio:string;color:string;interests:Interest[];instagramHandle?:string;instagramVisible?:boolean;linkedinHandle?:string;linkedinVisible?:boolean};
+export type Match={id:string;label:string;category:string;kind:'exact'|'related'|'ai';members:string[];evidence:{profile:string;label:string}[];reason:string;similarity?:number};
 export const categories=['전체','음악','게임','여행','운동','콘텐츠','음식','공부·일','기타'];
 export const preferenceNames={like:'좋아해요',avoid:'피하고 싶어요',explore:'해보고 싶어요'};
 export const preferenceQuestions={like:'무엇을 좋아해요?',avoid:'무엇을 싫어하거나 피하고 싶어요?',explore:'새롭게 해보고 싶은 것은요?'};
@@ -31,6 +31,11 @@ export function normalizeInstagram(value:string){
  let s=value.trim();if(!s)return '';
  if(/^https?:\/\//i.test(s)){try{const u=new URL(s);if(!['instagram.com','www.instagram.com'].includes(u.hostname)||u.username||u.password||u.port)throw new Error();const parts=u.pathname.split('/').filter(Boolean);if(parts.length!==1)throw new Error();s=parts[0];}catch{throw new Error('Instagram 아이디 또는 프로필 링크를 확인해주세요.');}}
  s=s.replace(/^@/,'').toLowerCase();if(!/^[a-z0-9_][a-z0-9_.]{0,29}$/.test(s)||s.endsWith('.')||s.includes('..')||['accounts','explore','direct','p','reel','reels','stories'].includes(s))throw new Error('Instagram 아이디는 영문·숫자·밑줄·마침표로 1~30자 입력해주세요.');return s;
+}
+export function normalizeLinkedIn(value:string){
+ let s=value.trim();if(!s)return '';
+ if(/^https?:\/\//i.test(s)){try{const u=new URL(s);if(!['linkedin.com','www.linkedin.com'].includes(u.hostname)||u.username||u.password||u.port)throw new Error();const parts=u.pathname.split('/').filter(Boolean);if(parts.length!==2||parts[0]!=='in')throw new Error();s=decodeURIComponent(parts[1]);}catch{throw new Error('LinkedIn 개인 프로필 아이디 또는 링크를 확인해주세요.');}}
+ if(!/^[a-zA-Z0-9][a-zA-Z0-9_-]{1,99}$/.test(s))throw new Error('LinkedIn 프로필 아이디는 영문·숫자·밑줄·하이픈으로 2~100자 입력해주세요.');return s.toLowerCase();
 }
 export function contactOrSensitive(s:string){return /(?:[\w.+-]+@[\w.-]+\.[a-z]{2,}|(?:\+82[-\s]?)?0?1[016789][-\s]?\d{3,4}[-\s]?\d{4}|\d{6}[- ]?[1-4]\d{6}|https?:\/\/|비밀번호|비번|주민등록)/i.test(s);}
 export const demo:Profile[]=[

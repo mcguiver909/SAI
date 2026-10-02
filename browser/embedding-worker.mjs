@@ -13,9 +13,9 @@ self.onmessage=async event=>{
  try{
   const texts=embeddingTexts(people);if(!texts.length){self.postMessage({requestId,status:'complete',matches:[]});return;}
   if(texts.length>600)throw new Error('한 번에 최대 600개의 공유 관심사를 비교할 수 있어요.');
-  self.postMessage({requestId,status:'progress',message:extractor?'관심사 의미를 비교하고 있어요.':'Qwen3 모델을 준비해요. 첫 다운로드는 약 614MB이며 시간이 걸릴 수 있어요.'});
+  self.postMessage({requestId,status:'progress',message:extractor?'관심사 의미를 비교하고 있어요.':'AI 모델을 준비하고 있어요. 첫 실행은 다운로드에 시간이 걸려요.'});
   extractor??=pipeline('feature-extraction','onnx-community/Qwen3-Embedding-0.6B-ONNX',{dtype:'q8',device:'wasm',progress_callback:p=>{
-   if(p.status==='progress'&&p.file?.endsWith('.onnx'))self.postMessage({requestId,status:'progress',message:`Qwen3 다운로드 중 · ${Math.floor(p.progress||0)}%`});
+   if(p.status==='progress'&&p.file?.endsWith('.onnx'))self.postMessage({requestId,status:'progress',message:`AI 모델 다운로드 중 · ${Math.floor(p.progress||0)}%`});
   }});
   let model;try{model=await extractor;}catch(e){extractor=null;throw e;}
   const missing=[...new Set(texts.filter(t=>!cache.has(t)))];
@@ -24,5 +24,5 @@ self.onmessage=async event=>{
   self.postMessage({requestId,status:'complete',matches});
   // Do not retain embeddings for another room or after sharing changes.
   cache.clear();
- }catch(e){cache.clear();self.postMessage({requestId,status:'error',message:'Qwen3 의미 비교를 완료하지 못했어요. 메모리와 네트워크 상태를 확인해주세요. 기본 공통점은 계속 볼 수 있어요.'});}
+ }catch(e){cache.clear();self.postMessage({requestId,status:'error',message:'AI 의미 비교를 완료하지 못했어요. 메모리와 네트워크 상태를 확인해주세요. 기본 공통점은 계속 볼 수 있어요.'});}
 };

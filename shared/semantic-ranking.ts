@@ -13,6 +13,6 @@ export function rankSemantic(people:Profile[],vectors:number[][]):Match[]{
   // Candidate threshold only, not a calibrated probability of shared preference.
   if(Number.isFinite(score)&&score>=.75)pairs.push({a,b,score});
  }
- const matches:Match[]=pairs.sort((a,b)=>b.score-a.score).map((p,i)=>({id:'qwen3-'+i,label:p.a.label+' · '+p.b.label,category:p.a.category,kind:'related',members:[p.a.profile,p.b.profile],evidence:[{profile:p.a.profile,label:p.a.label},{profile:p.b.profile,label:p.b.label}],reason:'Qwen3가 좋아하거나 해보고 싶은 항목에서 의미가 가까운 후보를 찾았어요. 같은 취향으로 확정한 것은 아니에요.'}));
- return eligibleMatches(matches,people).slice(0,12);
+ const matches:Match[]=pairs.sort((a,b)=>b.score-a.score).map((p,i)=>({id:'qwen3-'+i,label:p.a.label+' · '+p.b.label,category:p.a.category,kind:'related',similarity:p.score,members:[p.a.profile,p.b.profile],evidence:[{profile:p.a.profile,label:p.a.label},{profile:p.b.profile,label:p.b.label}],reason:'좋아하거나 해보고 싶은 항목에서 의미가 가까운 후보를 찾았어요. 같은 취향으로 확정한 것은 아니에요.'}));
+ return eligibleMatches(matches,people);
 }

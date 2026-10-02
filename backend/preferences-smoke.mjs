@@ -3,13 +3,14 @@ import assert from 'node:assert/strict';
 import {DatabaseSync} from 'node:sqlite';
 import fs from 'node:fs';
 import {api} from './api.mjs';
-import {findMatches,normalizeInstagram} from '../shared/matching.ts';
+import {findMatches,normalizeInstagram,normalizeLinkedIn} from '../shared/matching.ts';
 import {embeddingTexts,rankSemantic} from '../shared/semantic-ranking.ts';
 const sqlite=new DatabaseSync(':memory:');sqlite.exec('PRAGMA foreign_keys=ON');
 for(const name of fs.readdirSync('drizzle').filter(x=>x.endsWith('.sql')).sort())sqlite.exec(fs.readFileSync('drizzle/'+name,'utf8'));
 const DB={prepare(sql){let args=[];const stmt=sqlite.prepare(sql);return {bind(...v){args=v;return this;},async first(){return stmt.get(...args)||null;},async all(){return {results:stmt.all(...args)};},async run(){return stmt.run(...args);}};},async batch(stmts){return Promise.all(stmts.map(s=>s.run()));}};
 async function call(body,token='',q=''){const result=await api(new Request('https://test.invalid/api/app'+q,{method:body?'POST':'GET',headers:{'Content-Type':'application/json',...(token?{Authorization:'Bearer '+token}:{})},...(body?{body:JSON.stringify(body)}:{})}),{DB});return {status:result.status,data:await result.json()};}
-const a=(await call({action:'session'})).data.token,b=(await call({action:'session'})).data.token,c=(await call({action:'session'})).data.token;
+const make=async username=>(await call({action:'register',username,password:'test-password-123',confirmPassword:'test-password-123'})).data.token;
+const a=await make('user_a'),b=await make('user_b'),c=await make('user_c');
 const liked={id:'like',label:'재즈',category:'음악',shared:true,preference:'like'},avoid={id:'avoid',label:'공포영화',category:'콘텐츠',shared:true,preference:'avoid'},explore={id:'explore',label:'도예',category:'기타',shared:true,preference:'explore'};
 const saveA={action:'saveProfile',name:'가',interests:[liked,avoid,explore],instagramHandle:'https://www.instagram.com/Example_User/',instagramVisible:true};
 const aid=(await call(saveA,a)).data.id,bid=(await call({action:'saveProfile',name:'나',interests:[liked,avoid,explore]},b)).data.id;
@@ -45,4 +46,19 @@ await ensureProfileColumns(DB);await ensureProfileColumns(DB);
 assert.equal(sqlite.prepare('SELECT COUNT(*) AS n FROM profiles').get().n,3);
 assert.equal(sqlite.prepare('SELECT instagram_visible FROM profiles WHERE id=?').get(aid).instagram_visible,'private');
 console.log('PASS: persisted preferences, backward compatibility, avoidance filtering, Qwen3 input filtering, Instagram anonymous/pending/room denial, accepted-friend access, revocation, URL validation');
+
+
+assert.equal(normalizeLinkedIn('https://www.linkedin.com/in/test-person/'),'test-person');
+assert.throws(()=>normalizeLinkedIn('https://evil.invalid/in/test'));
+assert.throws(()=>normalizeLinkedIn('https://www.linkedin.com/company/test'));
+await call({...saveA,linkedinHandle:'https://www.linkedin.com/in/test-person/',linkedinVisible:true},a);
+assert.equal((await call(undefined,a)).data.me.linkedinHandle,'test-person');
+assert.equal((await call(undefined,c,'?profile='+aid)).data.profile.linkedinHandle,undefined);
+await call({action:'requestFriend',id:bid},a);await call({action:'acceptFriend',id:aid},b);
+assert.equal((await call(undefined,b,'?profile='+aid)).data.profile.linkedinHandle,'test-person');
+assert((await call(undefined,c,'?room='+room)).data.selectedRoom.members.every(p=>p.linkedinHandle===undefined));
+await call({...saveA,linkedinHandle:'test-person',linkedinVisible:false},a);
+assert.equal((await call(undefined,b,'?profile='+aid)).data.profile.linkedinHandle,undefined);
+console.log('PASS LinkedIn optional profile validation and friend-only visibility');
+
 sqlite.close();
