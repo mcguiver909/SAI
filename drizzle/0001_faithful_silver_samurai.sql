@@ -1,2 +1,4 @@
-ALTER TABLE `profiles` ADD `instagram_handle` text DEFAULT '' NOT NULL;--> statement-breakpoint
-ALTER TABLE `profiles` ADD `instagram_visible` text DEFAULT 'private' NOT NULL;
+-- Adopt the existing Site schema. The previous Worker already added these
+-- columns; deployment failed before recording this migration. Verified with
+-- the production D1 schema on 2026-10-03. Do not repeat ALTER TABLE.
+SELECT instagram_handle, instagram_visible FROM profiles LIMIT 0;

@@ -1,4 +1,5 @@
-// Additive compatibility migration for older hosted databases. Never rewrite rows.
+// Local-only baseline bootstrap. Production adopts the verified pre-existing
+// columns through migration 0001; the hosted Worker never runs this helper.
 export async function ensureProfileColumns(DB){
  const columns=async()=>new Set((await DB.prepare('PRAGMA table_info(profiles)').all()).results.map(c=>c.name));
  let existing=await columns();

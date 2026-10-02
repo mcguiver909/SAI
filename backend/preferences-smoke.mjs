@@ -6,7 +6,7 @@ import {api} from './api.mjs';
 import {findMatches,normalizeInstagram,normalizeLinkedIn} from '../shared/matching.ts';
 import {embeddingTexts,rankSemantic} from '../shared/semantic-ranking.ts';
 const sqlite=new DatabaseSync(':memory:');sqlite.exec('PRAGMA foreign_keys=ON');
-for(const name of fs.readdirSync('drizzle').filter(x=>x.endsWith('.sql')).sort())sqlite.exec(fs.readFileSync('drizzle/'+name,'utf8'));
+for(const name of fs.readdirSync('drizzle').filter(x=>x.endsWith('.sql')).sort()){if(name.startsWith('0001_'))sqlite.exec("ALTER TABLE profiles ADD COLUMN instagram_handle TEXT NOT NULL DEFAULT ''; ALTER TABLE profiles ADD COLUMN instagram_visible TEXT NOT NULL DEFAULT 'private';");sqlite.exec(fs.readFileSync('drizzle/'+name,'utf8'));}
 const DB={prepare(sql){let args=[];const stmt=sqlite.prepare(sql);return {bind(...v){args=v;return this;},async first(){return stmt.get(...args)||null;},async all(){return {results:stmt.all(...args)};},async run(){return stmt.run(...args);}};},async batch(stmts){return Promise.all(stmts.map(s=>s.run()));}};
 async function call(body,token='',q=''){const result=await api(new Request('https://test.invalid/api/app'+q,{method:body?'POST':'GET',headers:{'Content-Type':'application/json',...(token?{Authorization:'Bearer '+token}:{})},...(body?{body:JSON.stringify(body)}:{})}),{DB});return {status:result.status,data:await result.json()};}
 const make=async username=>(await call({action:'register',username,password:'test-password-123',confirmPassword:'test-password-123'})).data.token;

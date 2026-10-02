@@ -1,3 +1,4 @@
+import {ensureProfileColumns} from './profile-migration.mjs';
 import {createServer} from 'node:http';
 import {DatabaseSync} from 'node:sqlite';
 import fs from 'node:fs';
@@ -6,9 +7,10 @@ import {api} from './api.mjs';
 import {semanticPairs} from './semantic.mjs';
 fs.mkdirSync('.data',{recursive:true});const sqlite=new DatabaseSync('.data/sai.sqlite');sqlite.exec('PRAGMA foreign_keys=ON');
 sqlite.exec('CREATE TABLE IF NOT EXISTS local_migrations (name TEXT PRIMARY KEY)');
-for(const name of fs.readdirSync('drizzle').filter(x=>x.endsWith('.sql')).sort()){if(!sqlite.prepare('SELECT name FROM local_migrations WHERE name=?').get(name)){sqlite.exec(fs.readFileSync('drizzle/'+name,'utf8'));sqlite.prepare('INSERT INTO local_migrations (name) VALUES (?)').run(name);}}
+
 function prepare(sql){let args=[];const stmt=sqlite.prepare(sql);return{bind(...v){args=v;return this;},async first(){return stmt.get(...args)||null;},async all(){return{results:stmt.all(...args)};},async run(){return stmt.run(...args);}};}
 const DB={prepare,async batch(stmts){sqlite.exec('BEGIN');try{const result=[];for(const s of stmts)result.push(await s.run());sqlite.exec('COMMIT');return result;}catch(e){sqlite.exec('ROLLBACK');throw e;}}};
+for(const name of fs.readdirSync('drizzle').filter(x=>x.endsWith('.sql')).sort()){if(!sqlite.prepare('SELECT name FROM local_migrations WHERE name=?').get(name)){if(name.startsWith('0001_'))await ensureProfileColumns(DB);sqlite.exec(fs.readFileSync('drizzle/'+name,'utf8'));sqlite.prepare('INSERT INTO local_migrations (name) VALUES (?)').run(name);}}
 const server=createServer(async(req,res)=>{try{
 const url=new URL(req.url,`http://${req.headers.host}`);if(url.pathname.startsWith('/api/')){let body='';for await(const chunk of req){body+=chunk;if(body.length>9*1024*1024){res.writeHead(413);res.end('too large');return;}}
 const request=new Request(url,{method:req.method,headers:req.headers,...(body?{body}: {})});const result=await api(request,{DB,OPENAI_API_KEY:process.env.OPENAI_API_KEY,OPENAI_MODEL:process.env.OPENAI_MODEL,OLLAMA_URL:process.env.OLLAMA_URL,OLLAMA_MODEL:process.env.OLLAMA_MODEL,semanticPairs});res.writeHead(result.status,Object.fromEntries(result.headers));res.end(Buffer.from(await result.arrayBuffer()));return;}
