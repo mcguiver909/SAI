@@ -14,3 +14,18 @@ export function browserSemantic(people:Profile[],onProgress:(message:string)=>vo
   worker.postMessage({requestId,people:people.map(p=>({id:p.id,interests:p.interests.filter(t=>t.shared)}))});
  });
 }
+
+export function browserBridge(topics:import('../shared/bridge-topics').BridgeTopic[],onProgress:(message:string)=>void,signal?:AbortSignal):Promise<import('../shared/bridge-topics').BridgeTopic[]>{
+ if(!topics.length)return Promise.resolve([]);
+ return new Promise((resolve,reject)=>{
+  if(typeof Worker==='undefined'){reject(new Error('연결 주제의 AI 관련성 비교는 웹에서 실행해주세요.'));return;}
+  const worker=new Worker('/embedding/worker.js',{type:'module'}),requestId=Date.now().toString();
+  const timeout=setTimeout(()=>finish(new Error('AI 모델 준비 시간이 초과됐어요. 다시 시도해주세요.')),900000);
+  const abort=()=>finish(new Error('참여자나 공유 관심사가 변경되어 비교를 중단했어요.'));
+  function finish(error?:Error,result?:import('../shared/bridge-topics').BridgeTopic[]){clearTimeout(timeout);signal?.removeEventListener('abort',abort);worker.terminate();if(error)reject(error);else resolve(result||[]);}
+  signal?.addEventListener('abort',abort,{once:true});if(signal?.aborted){abort();return;}
+  worker.onerror=()=>finish(new Error('연결 주제 관련성을 비교하지 못했어요. 다시 시도해주세요.'));
+  worker.onmessage=event=>{const p=event.data;if(p.requestId!==requestId)return;if(p.status==='progress')onProgress(p.message);else if(p.status==='complete')finish(undefined,p.topics);else if(p.status==='error')finish(new Error(p.message));};
+  worker.postMessage({requestId,topics});
+ });
+}

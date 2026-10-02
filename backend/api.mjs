@@ -1,5 +1,6 @@
 import {addExampleFriends,exampleOwnerPrefix} from './example-friends.mjs';
 import {extractGemini} from './gemini.mjs';
+import {discoverBridgeTopics} from './bridge-topics.mjs';
 import {integrationRoute} from './integrations.mjs';
 import {validateAvatar} from './avatar.mjs';
 import {accountAction} from './auth.mjs';
@@ -69,6 +70,18 @@ export async function api(req,env){try{
   const id=p?.id||crypto.randomUUID();await db.batch([db.prepare('INSERT INTO profiles (id,owner,name,bio,interests,color,created,instagram_handle,instagram_visible,linkedin_handle,linkedin_visible,avatar) VALUES (?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(owner) DO UPDATE SET name=excluded.name,bio=excluded.bio,interests=excluded.interests,instagram_handle=excluded.instagram_handle,instagram_visible=excluded.instagram_visible,linkedin_handle=excluded.linkedin_handle,linkedin_visible=excluded.linkedin_visible,avatar=excluded.avatar').bind(id,owner,name,bio,JSON.stringify(unique),p?.color||'#3154F5',new Date().toISOString(),instagramHandle,instagramVisible,linkedinHandle,linkedinVisible,avatar),db.prepare("UPDATE accounts SET signup_instagram='',signup_linkedin='' WHERE owner=?").bind(owner)]);return json({id});
  }
  if(!p)return fail('먼저 내 취향을 등록해주세요.');
+ if(b.action==='bridgeTopics'){
+  if(b.aiConsent!==true)return fail('공유 관심사를 Gemini에 보내는 데 동의해주세요.');
+  const resolvePeople=async()=>{
+   if(b.room){const member=await db.prepare('SELECT room FROM members WHERE room=? AND profile=?').bind(String(b.room),p.id).first();if(!member)throw Object.assign(new Error('모임에 참여한 뒤 확인해주세요.'),{status:403});return (await db.prepare('SELECT p.* FROM profiles p JOIN members m ON m.profile=p.id WHERE m.room=? ORDER BY p.id').bind(String(b.room)).all()).results.map(x=>profile(x));}
+   if(b.profile){const other=await db.prepare('SELECT * FROM profiles WHERE id=?').bind(String(b.profile)).first();if(!other||other.id===p.id)throw new Error('비교할 상대를 선택해주세요.');const own=await db.prepare('SELECT * FROM profiles WHERE id=?').bind(p.id).first();return [profile(own),profile(other)];}
+   const ids=b.profiles;if(!Array.isArray(ids)||ids.length<2||ids.length>30||ids.some(id=>typeof id!=='string')||new Set(ids).size!==ids.length)throw new Error('연결 주제는 2~30명을 선택해서 찾아주세요.');
+   const friends=(await db.prepare("SELECT CASE WHEN sender=? THEN recipient ELSE sender END AS id FROM friendships WHERE status='accepted' AND (sender=? OR recipient=?)").bind(p.id,p.id,p.id).all()).results.map(x=>x.id);
+   if(ids.some(id=>id!==p.id&&!friends.includes(id)))throw Object.assign(new Error('현재 친구 목록에서 참여자를 다시 선택해주세요.'),{status:403});
+   const result=[];for(const id of ids){const row=await db.prepare('SELECT * FROM profiles WHERE id=?').bind(id).first();if(!row)throw new Error('참여자가 바뀌었어요. 다시 확인해주세요.');result.push(profile(row));}return result;
+  };
+  try{const people=await resolvePeople();const snapshot=JSON.stringify(people.map(p=>({id:p.id,interests:p.interests})));const result=await discoverBridgeTopics(env,owner,people);const current=await resolvePeople();if(JSON.stringify(current.map(p=>({id:p.id,interests:p.interests})))!==snapshot)return fail('공유 관심사가 바뀌었어요. 연결 주제를 다시 찾아주세요.',409);return json({...result,people:people.map(p=>({id:p.id,name:p.name,interests:p.interests}))});}catch(e){return fail(e.message,e.status||400);}
+ }
  if(b.action==='addExampleFriends')return json(await addExampleFriends(db,owner,p));
  if(b.action==='saveRoomPlan'){
   const r=await db.prepare('SELECT owner FROM rooms WHERE id=?').bind(String(b.room)).first();if(!r||r.owner!==p.id)return fail('모임을 만든 사람만 편성을 확정할 수 있어요.',403);
