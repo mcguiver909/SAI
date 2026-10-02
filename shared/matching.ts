@@ -1,6 +1,6 @@
 export type Preference='like'|'avoid'|'explore';
 export type Interest={id:string;label:string;category:string;shared:boolean;preference?:Preference};
-export type Profile={id:string;name:string;bio:string;color:string;interests:Interest[];instagramHandle?:string;instagramVisible?:boolean;linkedinHandle?:string;linkedinVisible?:boolean};
+export type Profile={id:string;name:string;bio:string;color:string;interests:Interest[];avatar?:string;instagramHandle?:string;instagramVisible?:boolean;linkedinHandle?:string;linkedinVisible?:boolean};
 export type Match={id:string;label:string;category:string;kind:'exact'|'related'|'ai';members:string[];evidence:{profile:string;label:string}[];reason:string;similarity?:number};
 export const categories=['전체','음악','게임','여행','운동','콘텐츠','음식','공부·일','기타'];
 export const preferenceNames={like:'좋아해요',avoid:'피하고 싶어요',explore:'해보고 싶어요'};

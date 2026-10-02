@@ -20,6 +20,7 @@
     "drizzle-orm": "0.45.2",
     "expo": "~57.0.26",
     "expo-clipboard": "~57.0.2",
+    "expo-image-manipulator": "~57.0.20",
     "expo-image-picker": "~57.0.20",
     "expo-linking": "~57.0.11",
     "expo-secure-store": "~57.0.4",
