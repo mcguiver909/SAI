@@ -22,7 +22,7 @@ test('only accepted friends can be invited, acceptance creates real membership',
 test('example friends are isolated, idempotent and can join example groups without invites',async()=>{
  const {env,sql}=await fixture();const add=await api(req('/api/app',{action:'addExampleFriends'}),env);assert.equal(add.status,200);
  await api(req('/api/app',{action:'addExampleFriends'}),env);
- const own=await (await api(req('/api/app'),env)).json();assert.equal(own.friends.length,11);assert(own.friends.every(p=>p.name.endsWith(' · 예시')&&p.bio.includes('가상 프로필')));
+ const own=await (await api(req('/api/app'),env)).json();assert.equal(own.friends.length,11);assert(own.friends.every(p=>p.isExample&&!p.name.includes('예시')&&p.interests.length>=3));
  const other=await (await api(req('/api/app',undefined,'b'),env)).json();assert.equal(other.friends.length,0);
  const selected=['a',...own.friends.slice(0,2).map(p=>p.id)];const created=await api(req('/api/app',{action:'createPlannedRoom',name:'예시 모임',plan:{size:3,selected,groups:[selected],unassigned:[]}}),env);assert.equal(created.status,200);const {id}=await created.json();assert.equal(sql.prepare('SELECT COUNT(*) AS n FROM members WHERE room=?').get(id).n,3);assert.equal(sql.prepare('SELECT COUNT(*) AS n FROM room_invites WHERE room=?').get(id).n,0);
  assert.equal(sql.prepare("SELECT COUNT(*) AS n FROM accounts WHERE owner LIKE 'example:%'").get().n,0);
