@@ -1,3 +1,4 @@
+import {addPresentationFriends} from './presentation-friends.mjs';
 import {addExampleFriends,exampleOwnerPrefix} from './example-friends.mjs';
 import {extractGemini} from './gemini.mjs';
 import {discoverBridgeTopics} from './bridge-topics.mjs';
@@ -67,7 +68,7 @@ export async function api(req,env){try{
   const linkedinVisible=b.linkedinVisible===undefined?p?.linkedin_visible||'private':b.linkedinVisible===true?'friends':'private';
   const instagramVisible=b.instagramVisible===undefined?p?.instagram_visible||'private':b.instagramVisible===true?'friends':'private';
   let avatar;try{avatar=validateAvatar(b.avatar===undefined?p?.avatar||'':b.avatar);}catch(e){return fail(e.message);}
-  const id=p?.id||crypto.randomUUID();await db.batch([db.prepare('INSERT INTO profiles (id,owner,name,bio,interests,color,created,instagram_handle,instagram_visible,linkedin_handle,linkedin_visible,avatar) VALUES (?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(owner) DO UPDATE SET name=excluded.name,bio=excluded.bio,interests=excluded.interests,instagram_handle=excluded.instagram_handle,instagram_visible=excluded.instagram_visible,linkedin_handle=excluded.linkedin_handle,linkedin_visible=excluded.linkedin_visible,avatar=excluded.avatar').bind(id,owner,name,bio,JSON.stringify(unique),p?.color||'#3154F5',new Date().toISOString(),instagramHandle,instagramVisible,linkedinHandle,linkedinVisible,avatar),db.prepare("UPDATE accounts SET signup_instagram='',signup_linkedin='' WHERE owner=?").bind(owner)]);return json({id});
+  const id=p?.id||crypto.randomUUID();await db.batch([db.prepare('INSERT INTO profiles (id,owner,name,bio,interests,color,created,instagram_handle,instagram_visible,linkedin_handle,linkedin_visible,avatar) VALUES (?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(owner) DO UPDATE SET name=excluded.name,bio=excluded.bio,interests=excluded.interests,instagram_handle=excluded.instagram_handle,instagram_visible=excluded.instagram_visible,linkedin_handle=excluded.linkedin_handle,linkedin_visible=excluded.linkedin_visible,avatar=excluded.avatar').bind(id,owner,name,bio,JSON.stringify(unique),p?.color||'#3154F5',new Date().toISOString(),instagramHandle,instagramVisible,linkedinHandle,linkedinVisible,avatar),db.prepare("UPDATE accounts SET signup_instagram='',signup_linkedin='' WHERE owner=?").bind(owner)]);if(b.presentationSetup===true&&!p){const saved=await db.prepare('SELECT * FROM profiles WHERE owner=?').bind(owner).first();await addPresentationFriends(db,owner,saved);}return json({id});
  }
  if(!p)return fail('먼저 내 취향을 등록해주세요.');
  if(b.action==='bridgeTopics'){
