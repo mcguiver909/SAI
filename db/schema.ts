@@ -12,3 +12,9 @@ export const accounts=sqliteTable('accounts',{owner:text('owner').primaryKey(),u
 export const authAttempts=sqliteTable('auth_attempts',{key:text('key').primaryKey(),attempts:integer('attempts').notNull(),expires:integer('expires').notNull()});
 
 export const roomPlans=sqliteTable('room_plans',{room:text('room').primaryKey().references(()=>rooms.id,{onDelete:'cascade'}),payload:text('payload').notNull(),created:text('created').notNull()});
+
+export const roomInvites=sqliteTable('room_invites',{room:text('room').notNull().references(()=>rooms.id,{onDelete:'cascade'}),profile:text('profile').notNull().references(()=>profiles.id,{onDelete:'cascade'})},t=>[primaryKey({columns:[t.room,t.profile]})]);
+export const connectedAccounts=sqliteTable('connected_accounts',{owner:text('owner').notNull().references(()=>accounts.owner,{onDelete:'cascade'}),provider:text('provider').notNull(),payload:text('payload').notNull(),updated:text('updated').notNull()},t=>[primaryKey({columns:[t.owner,t.provider]})]);
+export const oauthStates=sqliteTable('oauth_states',{hash:text('hash').primaryKey(),owner:text('owner').notNull().references(()=>accounts.owner,{onDelete:'cascade'}),sessionHash:text('session_hash').notNull(),cookieHash:text('cookie_hash').notNull(),payload:text('payload').notNull(),expires:integer('expires').notNull()});
+export const importedSources=sqliteTable('imported_sources',{owner:text('owner').notNull().references(()=>accounts.owner,{onDelete:'cascade'}),provider:text('provider').notNull(),records:text('records').notNull(),summary:text('summary').notNull(),updated:text('updated').notNull()},t=>[primaryKey({columns:[t.owner,t.provider]})]);
+export const aiUsage=sqliteTable('ai_usage',{key:text('key').primaryKey(),used:integer('used').notNull()});

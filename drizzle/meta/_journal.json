@@ -50,6 +50,13 @@
       "when": 1790959362501,
       "tag": "0006_aberrant_red_ghost",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "6",
+      "when": 1790963545089,
+      "tag": "0007_vengeful_eddie_brock",
+      "breakpoints": true
     }
   ]
 }

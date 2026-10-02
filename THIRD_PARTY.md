@@ -19,6 +19,8 @@ Technical report: Zhang et al., Qwen3 Embedding: Advancing Text Embedding and Re
 ONNX conversion: https://huggingface.co/onnx-community/Qwen3-Embedding-0.6B-ONNX
 The earlier E5 references document the baseline, which is no longer the production embedding model. This app uses pretrained weights, not the paper’s training pipeline, and its social matching threshold is not validated by the paper.
 
-Browser text extraction: Qwen/Qwen3-0.6B (Apache-2.0), https://huggingface.co/Qwen/Qwen3-0.6B; ONNX conversion https://huggingface.co/onnx-community/Qwen3-0.6B-ONNX. Chat template is used with thinking disabled, greedy generation, and a 256-token output limit. Extracted labels are checked against the input and require user confirmation. This is a generative model separate from Qwen3-Embedding-0.6B.
+Taste extraction uses the Gemini Developer API (`gemini-3.1-flash-lite`) on the server. Browser Qwen3 generative downloads have been removed; Qwen3-Embedding remains dedicated to cosine similarity. Google pricing and data use: https://ai.google.dev/gemini-api/docs/pricing .
 
-Generative taste extraction: `onnx-community/Qwen3-0.6B-ONNX`, derived from Qwen/Qwen3-0.6B, Apache-2.0. Runs locally in the browser through Transformers.js; model weights fetched from Hugging Face. Generation and embedding models are separate downloads.
+
+LinkedIn public profile imports use Bright Data LinkedIn Profiles Scraper API: https://brightdata.com/products/web-scraper/linkedin/profiles . They are optional and require the service operator's server-side key and the user's explicit choice of their own profile.
+- Profile-image OCR runs Tesseract.js in a browser worker with bundled Korean/English traineddata from @tesseract.js-data (Apache-2.0). Images are not uploaded.
