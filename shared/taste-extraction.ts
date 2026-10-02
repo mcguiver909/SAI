@@ -8,7 +8,16 @@ export function extractionPrompt(text:string,preference:Preference){
   {role:'user',content:'질문: '+preferenceQuestions[preference]+'\n답변: '+text},
  ];
 }
-export function validateTasteInput(text:string){if(!text.trim()||text.length>1000||contactOrSensitive(text))throw new Error('개인정보 없이 1,000자 이내로 입력해주세요.');}
+export const TASTE_INPUT_LIMIT=1000;
+export function validateTasteInput(text:string){
+ if(!text.trim())throw new Error('정리할 관심사 문장을 입력해주세요.');
+ if(text.length>TASTE_INPUT_LIMIT)throw new Error(`입력한 문장이 ${text.length.toLocaleString('ko-KR')}자예요. 1,000자 이내로 줄여주세요.`);
+}
+export function prepareImportedTasteText(records:{title:string;text:string}[]){
+ const raw=records.map(r=>r.title+'\n'+r.text).join('\n');
+ const text=raw.slice(0,TASTE_INPUT_LIMIT).replace(/[\uD800-\uDBFF]$/,'');
+ return {text,truncated:raw.length>TASTE_INPUT_LIMIT};
+}
 export function parseTasteOutput(raw:string,text:string,preference:Preference):TasteCandidate[]{
  validateTasteInput(text);
  const clean=raw.replace(/<think>[\s\S]*?<\/think>/g,'').replace(/```(?:json)?/g,'').trim();
